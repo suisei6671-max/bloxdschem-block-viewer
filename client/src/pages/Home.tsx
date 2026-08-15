@@ -1,22 +1,18 @@
 // Field Atlas style: this page is the specimen workbench—left rail for preparation, right canvas for findings.
-import { useMemo, useState } from "react";
-import { Copy, FileJson, FileUp, Languages, RefreshCw, ScanSearch, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { Copy, Download, FileJson, FileUp, RefreshCw, ScanSearch, Sparkles } from "lucide-react";
+import blockDataJson from "@/data/blockData.json";
+import jaJson from "@/data/ja.json";
+import enJson from "@/data/en.json";
 
 type BlockData = { name?: string; display?: string | { translationKey?: string }; rootId?: number };
 type BlockRow = { id: number; count: number; data?: BlockData; key?: string; ja: string; en: string; name: string };
 
 type Result = { fileName: string; schematicName: string; size: [number, number, number]; totalCells: number; rows: BlockRow[]; wiki: string; warnings: string[] };
 
-const defaultBlockData: BlockData[] = [
-  { name: "Unloaded", display: "Unloaded" },
-  { name: "Dirt", display: { translationKey: "item:dirt" } },
-  { name: "Messy Dirt", display: { translationKey: "item:messyDirt" } },
-  { name: "Grass Block", display: { translationKey: "item:grassBlock" } },
-  { name: "Sand", display: { translationKey: "item:sand" } },
-  { name: "Clay", display: { translationKey: "item:clay" } },
-];
-const defaultJa: Record<string, string> = { dirt: "土", messyDirt: "粗い土", grassBlock: "草ブロック", sand: "砂", clay: "粘土" };
-const defaultEn: Record<string, string> = { dirt: "Dirt", messyDirt: "Messy Dirt", grassBlock: "Grass Block", sand: "Sand", clay: "Clay" };
+const fixedBlockData = blockDataJson as BlockData[];
+const fixedJa = jaJson as Record<string, string>;
+const fixedEn = enJson as Record<string, string>;
 
 function readUInt8(bytes: Uint8Array, state: { i: number }) { if (state.i >= bytes.length) throw new Error("Avroデータが途中で終わっています。"); return bytes[state.i++]; }
 function readVarint(bytes: Uint8Array, state: { i: number }) { let value = 0, shift = 0; while (true) { const b = readUInt8(bytes, state); value += (b & 127) * 2 ** shift; if (!(b & 128)) return value; shift += 7; if (shift > 35) throw new Error("Avro整数が大きすぎます。"); } }
@@ -48,19 +44,21 @@ function buildResult(fileName: string, schematic: ReturnType<typeof parseSchemat
 }
 
 export default function Home() {
-  const [file, setFile] = useState<File | null>(null); const [blockDataText, setBlockDataText] = useState(JSON.stringify(defaultBlockData, null, 2)); const [jaText, setJaText] = useState(JSON.stringify(defaultJa, null, 2)); const [enText, setEnText] = useState(JSON.stringify(defaultEn, null, 2)); const [result, setResult] = useState<Result | null>(null); const [error, setError] = useState(""); const [copied, setCopied] = useState(false); const [busy, setBusy] = useState(false);
-  const dataCount = useMemo(() => { try { return JSON.parse(blockDataText).length; } catch { return 0; } }, [blockDataText]);
-  async function analyze() { if (!file) { setError("まずbloxdschemファイルを選択してください。"); return; } setBusy(true); setError(""); setCopied(false); try { const blockDatas = JSON.parse(blockDataText) as BlockData[]; const ja = asRecord(JSON.parse(jaText)); const en = asRecord(JSON.parse(enText)); const parsed = parseSchematic(await file.arrayBuffer()); setResult(buildResult(file.name, parsed, blockDatas, ja, en)); } catch (e) { setResult(null); setError(e instanceof Error ? e.message : "解析に失敗しました。"); } finally { setBusy(false); } }
+  const [file, setFile] = useState<File | null>(null); const [result, setResult] = useState<Result | null>(null); const [error, setError] = useState(""); const [copied, setCopied] = useState(false); const [busy, setBusy] = useState(false); const [instantAnalyze, setInstantAnalyze] = useState(true);
+  const dataCount = fixedBlockData.length;
+  async function analyzeFile(targetFile: File) { setBusy(true); setError(""); setCopied(false); try { const parsed = parseSchematic(await targetFile.arrayBuffer()); setResult(buildResult(targetFile.name, parsed, fixedBlockData, fixedJa, fixedEn)); } catch (e) { setResult(null); setError(e instanceof Error ? e.message : "解析に失敗しました。"); } finally { setBusy(false); } }
+  async function analyze() { if (!file) { setError("まずbloxdschemファイルを選択してください。"); return; } await analyzeFile(file); }
+  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) { const next = event.target.files?.[0] || null; setFile(next); setError(""); if (next && instantAnalyze) void analyzeFile(next); }
   async function copyWiki() { if (!result) return; await navigator.clipboard.writeText(result.wiki); setCopied(true); setTimeout(() => setCopied(false), 1600); }
-  function loadJson(setter: (value: string) => void) { return (event: React.ChangeEvent<HTMLInputElement>) => { const selected = event.target.files?.[0]; if (!selected) return; selected.text().then(setter).catch(() => setError("JSONファイルを読み込めませんでした。")); }; }
+  function downloadJson(name: string, data: unknown) { const blob = new Blob([JSON.stringify(data, null, 2) + "\n"], { type: "application/json;charset=utf-8" }); const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = name; anchor.click(); URL.revokeObjectURL(url); }
   return <div className="atlas-shell">
     <header className="topbar"><div className="brand"><img src="/manus-storage/block-atlas-logo_a3c9219e.png" alt="" /><div><span className="eyebrow">FIELD ATLAS / SCHEMATIC LAB</span><strong className="wordmark">block atlas</strong></div></div><div className="top-meta"><span>LOCAL ANALYSIS</span><span className="status-dot" /> browser only</div></header>
     <main className="workbench">
       <aside className="rail">
         <div className="rail-intro"><div className="progress-spine" aria-hidden="true"><i /><i /><i /><i /></div><span className="index-number">01</span><h1>構造を読み、<br /><em>素材を数える。</em></h1><p>bloxdschemを標本台に載せて、ブロックの内訳をWiki形式へ整えます。</p></div>
-        <section className="rail-section"><div className="section-label"><span>02</span> SOURCE</div><label className="dropzone"><FileUp size={18} /><span>{file ? file.name : "bloxdschemを選択"}</span><input type="file" accept=".bloxdschem" onChange={(e) => setFile(e.target.files?.[0] || null)} /></label></section>
-        <section className="rail-section"><div className="section-label"><span>03</span> DICTIONARIES</div><ConfigField label="blockDatas.json" count={`${dataCount} records`} value={blockDataText} onChange={setBlockDataText} onFile={loadJson(setBlockDataText)} /><ConfigField label="ja.json" value={jaText} onChange={setJaText} onFile={loadJson(setJaText)} /><ConfigField label="en.json" value={enText} onChange={setEnText} onFile={loadJson(setEnText)} /></section>
-        <button className="analyze-button" onClick={analyze} disabled={busy}>{busy ? <RefreshCw className="spin" size={17} /> : <ScanSearch size={17} />}{busy ? "解析中…" : "解析を実行"}</button>
+        <section className="rail-section"><div className="section-label"><span>02</span> SOURCE</div><label className="dropzone"><FileUp size={18} /><span>{file ? file.name : "bloxdschemを選択"}</span><input type="file" accept=".bloxdschem" onChange={handleFileChange} /></label></section>
+        <section className="rail-section"><div className="section-label"><span>03</span> FIXED DATA</div><FixedJsonCard label="blockData.json" meta={`${dataCount.toLocaleString()} records`} onDownload={() => downloadJson("blockData.json", fixedBlockData)} /><FixedJsonCard label="ja.json" meta={`${Object.keys(fixedJa).length.toLocaleString()} translations`} onDownload={() => downloadJson("ja.json", fixedJa)} /><FixedJsonCard label="en.json" meta={`${Object.keys(fixedEn).length.toLocaleString()} translations`} onDownload={() => downloadJson("en.json", fixedEn)} /></section>
+        <label className="instant-toggle"><input type="checkbox" checked={instantAnalyze} onChange={(event) => setInstantAnalyze(event.target.checked)} /><span><strong>即解析モード</strong><small>{instantAnalyze ? "アップロードと同時に解析" : "ボタンで解析を実行"}</small></span></label><button className="analyze-button" onClick={analyze} disabled={busy}>{busy ? <RefreshCw className="spin" size={17} /> : <ScanSearch size={17} />}{busy ? "解析中…" : "解析を実行"}</button>
         {error && <div className="error-box">{error}</div>}
         <div className="rail-note"><Sparkles size={14} /> rootIdを自動で統合。Unloadedとmetaブロックは素材数から除外します。</div>
       </aside>
@@ -71,5 +69,5 @@ export default function Home() {
     </main>
   </div>;
 }
-function ConfigField({ label, count, value, onChange, onFile }: { label: string; count?: string; value: string; onChange: (value: string) => void; onFile: (event: React.ChangeEvent<HTMLInputElement>) => void }) { return <div className="config-field"><div><label>{label}</label>{count && <span>{count}</span>}<input type="file" accept=".json" onChange={onFile} /></div><textarea value={value} onChange={(e) => onChange(e.target.value)} spellCheck={false} /></div>; }
+function FixedJsonCard({ label, meta, onDownload }: { label: string; meta: string; onDownload: () => void }) { return <div className="fixed-json-card"><div className="fixed-json-icon"><FileJson size={15} /></div><div className="fixed-json-copy"><strong>{label}</strong><span>{meta} · fixed source</span></div><button type="button" onClick={onDownload} aria-label={`${label}を保存`}><Download size={14} /></button></div>; }
 function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) { return <div className={`stat ${accent ? "stat-accent" : ""}`}><span>{label}</span><strong>{value}</strong></div>; }

@@ -1,6 +1,8 @@
 # Todo
 
-- [ ] miniSchem.bloxdschemを現行解析ロジックで読み込み、ID別件数を確認する
-- [ ] Unloadedを出力対象外にする集計ルールを実装する
-- [ ] Dirt 2、Grass Block 2、Sand 1の期待結果と照合する
-- [ ] 更新版をビルド・画面検証し、チェックポイントを保存する
+- [ ] 添付されたblockData.json、ja.json、en.jsonをプロジェクト内へ保存する
+- [ ] 3つのJSONを固定データとしてアプリから読み込む
+- [ ] JSON編集入力を固定辞書の確認表示へ置き換える
+- [ ] bloxdschemアップロード時の即解析ON/OFFを追加する（既定ON）
+- [ ] 手動の解析を実行ボタンを維持する
+- [ ] 固定3 JSONとminiSchemで動作検証し、更新版を納品する
