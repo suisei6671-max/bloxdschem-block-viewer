@@ -1,0 +1,5 @@
+# 複数解析・変換ルール検証
+
+miniSchem.bloxdschemとsand.bloxdschemを同時に選択すると、2件の標本として個別解析結果が表示された。miniSchemはDirt 2、Grass Block 2、Sand 1、sandはSand 6として表示された。
+
+ファイル間の空行設定は既定値2で表示され、標準テンプレートは各ファイルのcropFileName、画像名、wikitableへ展開された。miniSchemとsandの変換結果が順番に連結され、ファイル名の拡張子除去とアンダースコア前のcropFileName処理も実装済み。
