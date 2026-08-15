@@ -42,7 +42,7 @@ function resolveDisplay(data: BlockData | undefined, ja: Record<string, string>,
 function buildResult(fileName: string, schematic: ReturnType<typeof parseSchematic>, blockDatas: BlockData[], ja: Record<string, string>, en: Record<string, string>): Result {
   const counts = new Map<number, number>(); schematic.ids.forEach((id) => counts.set(id, (counts.get(id) || 0) + 1)); const warnings: string[] = [];
   counts.forEach((count, id) => { const rootId = blockDatas[id]?.rootId; if (typeof rootId === "number" && rootId !== id) { counts.set(id, 0); counts.set(rootId, (counts.get(rootId) || 0) + count); } });
-  const rows = Array.from(counts.entries()).filter(([, count]) => count > 0).sort((a, b) => a[0] - b[0]).map(([id, count]) => { const data = blockDatas[id]; const resolved = resolveDisplay(data, ja, en); if (!data) warnings.push(`ID ${id} のblockDataがありません。`); return { id, count, data, ...resolved }; });
+  const rows = Array.from(counts.entries()).filter(([id, count]) => count > 0 && blockDatas[id]?.name !== "Unloaded").sort((a, b) => a[0] - b[0]).map(([id, count]) => { const data = blockDatas[id]; const resolved = resolveDisplay(data, ja, en); if (!data) warnings.push(`ID ${id} のblockDataがありません。`); return { id, count, data, ...resolved }; });
   const wiki = rows.map((row) => `|&attachref(アイテム一覧/${row.name}.png,,50x50);|[[${row.ja}&br;${row.en}>アイテム/${row.ja}]]|${row.count}|`).join("\n");
   return { fileName, schematicName: schematic.name, size: schematic.size, totalCells: schematic.ids.length, rows, wiki, warnings };
 }
@@ -62,7 +62,7 @@ export default function Home() {
         <section className="rail-section"><div className="section-label"><span>03</span> DICTIONARIES</div><ConfigField label="blockDatas.json" count={`${dataCount} records`} value={blockDataText} onChange={setBlockDataText} onFile={loadJson(setBlockDataText)} /><ConfigField label="ja.json" value={jaText} onChange={setJaText} onFile={loadJson(setJaText)} /><ConfigField label="en.json" value={enText} onChange={setEnText} onFile={loadJson(setEnText)} /></section>
         <button className="analyze-button" onClick={analyze} disabled={busy}>{busy ? <RefreshCw className="spin" size={17} /> : <ScanSearch size={17} />}{busy ? "解析中…" : "解析を実行"}</button>
         {error && <div className="error-box">{error}</div>}
-        <div className="rail-note"><Sparkles size={14} /> rootIdを自動で統合。metaブロックは素材数から除外します。</div>
+        <div className="rail-note"><Sparkles size={14} /> rootIdを自動で統合。Unloadedとmetaブロックは素材数から除外します。</div>
       </aside>
       <section className="canvas">
         <div className="canvas-heading"><div><span className="eyebrow">SPECIMEN REPORT / {result ? "READY" : "WAITING"}</span><h2>{result ? result.schematicName : "ブロック標本レポート"}</h2></div>{result && <div className="file-tag">{result.fileName}<br /><span>{result.size.join(" × ")} blocks</span></div>}</div>
