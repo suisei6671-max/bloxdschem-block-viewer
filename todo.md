@@ -1,6 +1,7 @@
 # Todo
 
-- [ ] bloxdschemのIDを解析時に1減算する
-- [ ] 補正後のIDでrootId統合・Unloaded除外・名前解決を行う
-- [ ] miniSchemでDirt 2、Grass Block 2、Sand 1になるか検証する
-- [ ] TypeScriptチェック・ビルド・ブラウザー確認後にチェックポイントを保存する
+- [ ] decodeRleではID値を変更せず保持する
+- [ ] blockData参照時にid - 1を使う
+- [ ] rootId参照も補正後のblockDataインデックスで処理する
+- [ ] miniSchemで実IDと表示名が正しく対応するか確認する
+- [ ] TypeScriptチェック・ビルド・チェックポイント保存を行う
